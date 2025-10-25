@@ -23,8 +23,19 @@
   .button-on { background-color:#38a169; } /* xanh = bật */
   .button-off { background-color:#e53e3e; } /* đỏ = tắt */
 
-  @keyframes shrinkWidth { from { width: 100%; } to { width: 0%; } }
-  .progress-bar { position:absolute; top:0; left:0; height:5px; background:#38a169; width:100%; z-index:10; }
+  /* CSS Progress Bar Animation */
+  @keyframes shrinkWidth {
+    from { width: 100%; }
+    to { width: 0%; }
+  }
+  .progress-bar {
+    position:absolute;
+    top:0; left:0;
+    height:5px;
+    background:#38a169;
+    width:100%;
+    z-index:10;
+  }
 </style>
 </head>
 <body>
@@ -79,23 +90,17 @@
     themeButton.textContent = isDark ? "🌞" : "🌙";
   };
 
-  // --- Bell Sounds Random ---
-  const BELL_SOUNDS = [
-    "https://soundbible.com/mp3/Temple%20Bell-SoundBible.com-756181215.mp3",
-    "https://soundbible.com/mp3/Chime-SoundBible.com-1860142283.mp3",
-    "https://soundbible.com/mp3/Bell-Ringing-SoundBible.com-126542571.mp3"
-  ];
+  // --- Bell Sound ---
+  const BELL_URL = "https://soundbible.com/mp3/Temple%20Bell-SoundBible.com-756181215.mp3";
+  const audio = new Audio(BELL_URL); 
+  audio.preload="auto"; 
+  audio.volume = localStorage.getItem('volume') ? localStorage.getItem('volume')/100 : 0.8;
 
-  function playRandomBell() {
-    const randomIndex = Math.floor(Math.random() * BELL_SOUNDS.length);
-    const audio = new Audio(BELL_SOUNDS[randomIndex]);
-    audio.volume = volumeRange.value / 100;
-    audio.play().catch(e => console.warn(e));
-  }
-
-  // Khi nhấn vào hình ảnh, chỉ phát âm thanh, KHÔNG reset timer hay progress bar
   mainImage.onclick = () => {
-    if(isEnabled) playRandomBell();
+    if(audio.paused){
+      audio.currentTime = 0;
+      audio.play().catch(e=>console.warn(e));
+    }
   };
 
   // --- Controls ---
@@ -103,9 +108,11 @@
   const volumeLabel = document.getElementById('volumeLabel');
   volumeRange.value = localStorage.getItem('volume') || 80;
   volumeLabel.textContent = volumeRange.value + '%';
+  audio.volume = volumeRange.value/100;
 
   volumeRange.addEventListener('input', e=>{
     const vol = e.target.value;
+    audio.volume = vol/100;
     volumeLabel.textContent = vol + '%';
     localStorage.setItem('volume', vol);
   });
@@ -114,11 +121,11 @@
   const intervalLabel = document.getElementById('intervalLabel');
   intervalRange.value = localStorage.getItem('interval') || 30;
   intervalLabel.textContent = intervalRange.value + ' phút';
-  let intervalMinutes = parseInt(intervalRange.value);
+  let intervalMinutes = parseInt(intervalRange.value); 
 
   intervalRange.addEventListener('input', e=>{
-    intervalMinutes = parseInt(e.target.value);
-    intervalLabel.textContent = intervalMinutes + ' phút';
+    intervalMinutes = parseInt(e.target.value); 
+    intervalLabel.textContent = intervalMinutes + ' phút'; 
     localStorage.setItem('interval', intervalMinutes);
     resetTimer();
   });
@@ -131,7 +138,7 @@
   startTimeInput.addEventListener('input', e=>{ localStorage.setItem('startTime', e.target.value); resetTimer(); });
   endTimeInput.addEventListener('input', e=>{ localStorage.setItem('endTime', e.target.value); resetTimer(); });
 
-  let isEnabled = localStorage.getItem('bellEnabled') !== 'false';
+  let isEnabled = localStorage.getItem('bellEnabled') !== 'false'; // default true
   const toggleBell = document.getElementById('toggleBell');
   function updateToggleButton(){
     toggleBell.textContent = isEnabled ? "Chuông Bật" : "Chuông Tắt";
@@ -145,11 +152,11 @@
   };
   updateToggleButton();
 
-  // --- Progress Bar ---
+  // --- Progress Bar Animation ---
   const progressBar = document.getElementById('progressBar');
   function startProgressBar(durationMinutes){
-    progressBar.style.animation = 'none';
-    void progressBar.offsetWidth; 
+    progressBar.style.animation = 'none'; // reset
+    void progressBar.offsetWidth; // force reflow
     progressBar.style.animation = `shrinkWidth ${durationMinutes*60}s linear forwards`;
   }
 
@@ -169,7 +176,7 @@
     if(end < start) end.setDate(end.getDate() + 1);
 
     if(now >= start && now <= end){
-      playRandomBell();
+      mainImage.click();
       startProgressBar(intervalMinutes);
     }
   }
