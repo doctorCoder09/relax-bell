@@ -1,306 +1,138 @@
 <!DOCTYPE html>
 <html lang="vi">
-  <head>
-    <meta charset="UTF-8" />
-    <meta
-      name="viewport"
-      content="width=device-width, initial-scale=1.0, maximum-scale=1.0"
-    />
-    <title>Relaxation Bell</title>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Relaxation Bell</title>
+<style>
+  body { margin:0; font-family:"Inter",sans-serif; transition: background-color 0.3s, color 0.3s; background-color:#ffffff; color:#1a202c; }
+  body.dark { background-color:#1a202c; color:#f7fafc; }
 
-    <!-- React & ReactDOM -->
-    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  .container { display:flex; flex-direction:column; align-items:center; padding:20px; }
+  .image-container { position:relative; width:100%; max-width:800px; aspect-ratio:16/9; overflow:hidden; border-radius:12px; margin-bottom:20px; cursor:pointer; transition: transform 0.3s; }
+  .image-container:hover img { transform: scale(1.05); }
+  .image-container img { width:100%; height:100%; object-fit:cover; transition: transform 0.3s; }
 
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
+  .theme-button { position:fixed; top:15px; right:15px; width:40px; height:40px; font-size:1.2rem; padding:5px; border-radius:50%; background-color:#3182ce; color:white; border:none; cursor:pointer; transition: all 0.2s ease; z-index:1000; }
+  .theme-button:hover { transform: scale(1.2); background-color:#2b6cb0; }
 
-    <script>
-      tailwind.config = {
-        darkMode: "class",
-      };
-    </script>
+  .controls { max-width:500px; width:100%; display:flex; flex-direction:column; gap:15px; }
+  input[type="range"], input[type="time"] { width:100%; }
+  .button-toggle { padding:10px 20px; border:none; border-radius:8px; font-size:1rem; cursor:pointer; color:white; transition: transform 0.2s; }
+  .button-toggle:hover { transform: scale(1.05); }
+  .button-on { background-color:#e53e3e; }
+  .button-off { background-color:#38a169; }
+</style>
+</head>
+<body>
 
-    <style>
-      body {
-        margin: 0;
-        font-family: "Inter", sans-serif;
-        -webkit-tap-highlight-color: transparent;
-      }
+<button id="themeButton" class="theme-button" title="Đổi theme">🌙</button>
 
-      input[type="range"] {
-        accent-color: #14b8a6;
-      }
+<div class="container">
+  <h1>Relaxation Bell</h1>
 
-      .aspect-video-fixed {
-        aspect-ratio: 16 / 9;
-        width: 100%;
-        height: auto;
-        max-height: 60vh;
-      }
+  <div id="imageContainer" class="image-container">
+    <img id="mainImage" src="https://picsum.photos/1200/600?blur=1" alt="Relaxation">
+  </div>
 
-      @media (prefers-color-scheme: dark) {
-        :root {
-          color-scheme: dark;
-        }
-      }
+  <div class="controls">
+    <label>Âm lượng: <span id="volumeLabel">80%</span></label>
+    <input type="range" id="volumeRange" min="0" max="100" step="5" value="80">
 
-      @media (prefers-color-scheme: light) {
-        :root {
-          color-scheme: light;
-        }
-      }
-    </style>
-  </head>
+    <label>Khoảng nhắc: <span id="intervalLabel">30 phút</span></label>
+    <input type="range" id="intervalRange" min="5" max="60" step="5" value="30">
 
-  <body class="bg-gray-900 text-white transition-colors duration-500">
-    <div id="root"></div>
+    <label>Thời gian hoạt động:</label>
+    <div style="display:flex; gap:10px;">
+      <input type="time" id="startTime" value="09:00">
+      <span>→</span>
+      <input type="time" id="endTime" value="17:00">
+    </div>
 
-    <script type="text/babel">
-      const { useState, useEffect, useRef, useCallback } = React;
+    <button id="toggleBell" class="button-toggle button-on">Tắt chuông nhắc</button>
+  </div>
+</div>
 
-      const BELL_SOUND_URL =
-        "https://soundbible.com/mp3/Temple%20Bell-SoundBible.com-756181215.mp3";
-      const IMAGE_URL_LIGHT = "https://picsum.photos/1200/600?blur=1";
-      const IMAGE_URL_DARK = "https://picsum.photos/1200/600?blur=1&grayscale=true";
+<script>
+  // --- Theme & Image ---
+  const themeButton = document.getElementById('themeButton');
+  const body = document.body;
+  const mainImage = document.getElementById('mainImage');
+  const IMAGE_LIGHT = "https://picsum.photos/1200/600?blur=1";
+  const IMAGE_DARK = "https://picsum.photos/1200/600?blur=1&grayscale=true";
 
-      function App() {
-        const [intervalMinutes, setIntervalMinutes] = useState(30);
-        const [startTime, setStartTime] = useState("09:00");
-        const [endTime, setEndTime] = useState("17:00");
-        const [isEnabled, setIsEnabled] = useState(true);
-        const [isSoundReady, setIsSoundReady] = useState(true);
-        const [volume, setVolume] = useState(80);
-        const [isMuted, setIsMuted] = useState(false);
-        const [theme, setTheme] = useState("auto");
-        const [isDark, setIsDark] = useState(
-          window.matchMedia("(prefers-color-scheme: dark)").matches
-        );
+  let isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+  function applyTheme(theme){
+    if(theme==='dark'){ body.classList.add('dark'); mainImage.src=IMAGE_DARK; }
+    else { body.classList.remove('dark'); mainImage.src=IMAGE_LIGHT; }
+  }
+  applyTheme(isDark?'dark':'light');
 
-        const audioRef = useRef(null);
-        const timerRef = useRef(null);
-        const playSoundRef = useRef();
+  themeButton.onclick = () => {
+    isDark = !isDark;
+    applyTheme(isDark?'dark':'light');
+    themeButton.textContent = isDark ? "🌞" : "🌙";
+  };
 
-        // Theo dõi theme hệ thống
-        useEffect(() => {
-          const media = window.matchMedia("(prefers-color-scheme: dark)");
-          const listener = (e) => setIsDark(e.matches);
-          media.addEventListener("change", listener);
-          return () => media.removeEventListener("change", listener);
-        }, []);
+  // --- Bell Sound ---
+  const BELL_URL = "https://soundbible.com/mp3/Temple%20Bell-SoundBible.com-756181215.mp3";
+  const audio = new Audio(BELL_URL); audio.preload="auto"; let isSoundReady=true;
 
-        // Áp dụng theme
-        useEffect(() => {
-          if (theme === "dark" || (theme === "auto" && isDark)) {
-            document.documentElement.classList.add("dark");
-          } else {
-            document.documentElement.classList.remove("dark");
-          }
-        }, [theme, isDark]);
+  mainImage.onclick = () => {
+    if(isSoundReady){ isSoundReady=false; audio.currentTime=0;
+      audio.play().catch(e=>console.warn(e)).finally(()=>isSoundReady=true);
+    }
+  };
 
-        // Cấu hình âm thanh
-        const handleSoundEnd = useCallback(() => {
-          setTimeout(() => setIsSoundReady(true), 3000);
-        }, []);
+  // --- Controls ---
+  const volumeRange = document.getElementById('volumeRange');
+  const volumeLabel = document.getElementById('volumeLabel');
+  volumeRange.addEventListener('input', e=>{
+    const vol = e.target.value; audio.volume=vol/100; volumeLabel.textContent=vol+'%';
+  });
 
-        useEffect(() => {
-          const audio = new Audio(BELL_SOUND_URL);
-          audio.preload = "auto";
-          audioRef.current = audio;
-          audio.addEventListener("ended", handleSoundEnd);
-          return () => audio.removeEventListener("ended", handleSoundEnd);
-        }, [handleSoundEnd]);
+  const intervalRange = document.getElementById('intervalRange');
+  const intervalLabel = document.getElementById('intervalLabel');
+  let intervalMinutes = parseInt(intervalRange.value); 
+  intervalRange.addEventListener('input', e=>{
+    intervalMinutes=parseInt(e.target.value); intervalLabel.textContent=intervalMinutes+' phút'; resetTimer();
+  });
 
-        useEffect(() => {
-          if (audioRef.current) {
-            audioRef.current.volume = volume / 100;
-            audioRef.current.muted = isMuted;
-          }
-        }, [volume, isMuted]);
+  const startTimeInput = document.getElementById('startTime');
+  const endTimeInput = document.getElementById('endTime');
 
-        const playSound = useCallback(() => {
-          if (audioRef.current && isSoundReady) {
-            setIsSoundReady(false);
-            audioRef.current.currentTime = 0;
-            audioRef.current
-              .play()
-              .catch((err) => {
-                console.warn("Audio play failed:", err);
-                setIsSoundReady(true);
-              });
-          }
-        }, [isSoundReady]);
+  let isEnabled=true;
+  const toggleBell = document.getElementById('toggleBell');
+  toggleBell.onclick = ()=>{
+    isEnabled = !isEnabled;
+    toggleBell.textContent = isEnabled?"Tắt chuông nhắc":"Bật chuông nhắc";
+    toggleBell.className=`button-toggle ${isEnabled?'button-on':'button-off'}`;
+    resetTimer();
+  };
 
-        useEffect(() => {
-          playSoundRef.current = playSound;
-        });
+  let timer;
+  function parseTime(str){
+    const [h,m] = str.split(':').map(Number);
+    const d = new Date();
+    d.setHours(h,m,0,0);
+    return d;
+  }
 
-        useEffect(() => {
-          if (timerRef.current) clearInterval(timerRef.current);
-          if (!isEnabled) return;
+  function checkAndPlay(){
+    if(!isEnabled) return;
+    const now=new Date();
+    const start=parseTime(startTimeInput.value);
+    const end=parseTime(endTimeInput.value);
+    if(now>=start && now<=end){ mainImage.click(); }
+  }
 
-          const checkAndPlay = () => {
-            const now = new Date();
-            const [sh, sm] = startTime.split(":").map(Number);
-            const [eh, em] = endTime.split(":").map(Number);
-            const s = new Date();
-            s.setHours(sh, sm, 0, 0);
-            const e = new Date();
-            e.setHours(eh, em, 0, 0);
+  function resetTimer(){
+    if(timer) clearInterval(timer);
+    if(isEnabled){ checkAndPlay(); timer=setInterval(checkAndPlay, intervalMinutes*60*1000); }
+  }
 
-            if (now >= s && now <= e) playSoundRef.current?.();
-          };
+  resetTimer();
+</script>
 
-          checkAndPlay();
-          timerRef.current = setInterval(checkAndPlay, intervalMinutes * 60 * 1000);
-          return () => clearInterval(timerRef.current);
-        }, [isEnabled, intervalMinutes, startTime, endTime]);
-
-        const handleVolumeChange = (v) => {
-          setVolume(v);
-          if (isMuted && v > 0) setIsMuted(false);
-        };
-
-        const currentImage = isDark ? IMAGE_URL_DARK : IMAGE_URL_LIGHT;
-
-        // Nút chuyển theme nhanh
-        const toggleQuickTheme = () => {
-          if (theme === "dark" || (theme === "auto" && isDark)) {
-            setTheme("light");
-          } else {
-            setTheme("dark");
-          }
-        };
-
-        return (
-          <div className="flex flex-col items-center justify-center min-h-[100dvh] px-4 py-6 transition-colors duration-500 bg-white text-gray-900 dark:bg-gray-900 dark:text-white">
-            <div className="w-full max-w-screen-md flex flex-col items-center space-y-6 md:space-y-8">
-              
-              {/* Header + Nút theme */}
-              <div className="w-full flex items-center justify-between mb-2">
-                <h1 className="text-2xl sm:text-3xl md:text-4xl font-light tracking-wide">
-                  Relaxation Bell
-                </h1>
-                <button
-                  onClick={toggleQuickTheme}
-                  className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition"
-                  title="Đổi giao diện nhanh"
-                >
-                  {theme === "dark" || (theme === "auto" && isDark) ? (
-                    <span className="text-yellow-400 text-2xl">🌞</span>
-                  ) : (
-                    <span className="text-gray-700 dark:text-gray-300 text-2xl">🌙</span>
-                  )}
-                </button>
-              </div>
-
-              {/* Hình ảnh */}
-              <div
-                className="relative rounded-xl overflow-hidden shadow-xl ring-1 ring-gray-300/20 dark:ring-white/10 cursor-pointer group aspect-video-fixed"
-                onClick={playSound}
-              >
-                <img
-                  src={currentImage}
-                  alt="Relaxation"
-                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                />
-                <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                  
-                </div>
-              </div>
-
-              {/* Cài đặt */}
-              <div className="w-full bg-gray-100 dark:bg-gray-800/70 p-5 rounded-xl shadow-lg ring-1 ring-gray-300/20 dark:ring-white/10 space-y-6">
-                {/* Âm lượng */}
-                <div>
-                  <label className="block text-sm sm:text-base mb-2">
-                    Âm lượng:{" "}
-                    <span className="font-semibold text-teal-500 dark:text-teal-300">
-                      {isMuted ? "Tắt tiếng" : `${volume}%`}
-                    </span>
-                  </label>
-                  <div className="flex items-center gap-3">
-                    <button
-                      onClick={() => setIsMuted(!isMuted)}
-                      className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700"
-                    >
-                      {isMuted ? "🔇" : "🔊"}
-                    </button>
-                    <input
-                      type="range"
-                      min="0"
-                      max="100"
-                      step="10"
-                      value={isMuted ? 0 : volume}
-                      onChange={(e) => handleVolumeChange(Number(e.target.value))}
-                      className="flex-1 h-2 bg-gray-300 dark:bg-gray-700 rounded-lg cursor-pointer"
-                    />
-                  </div>
-                </div>
-
-                {/* Khoảng nhắc */}
-                <div>
-                  <label className="block text-sm sm:text-base mb-2">
-                    Khoảng nhắc:{" "}
-                    <span className="font-semibold text-teal-500 dark:text-teal-300">
-                      {intervalMinutes} phút
-                    </span>
-                  </label>
-                  <input
-                    type="range"
-                    min="5"
-                    max="60"
-                    step="5"
-                    value={intervalMinutes}
-                    onChange={(e) => setIntervalMinutes(Number(e.target.value))}
-                    className="w-full h-2 bg-gray-300 dark:bg-gray-700 rounded-lg"
-                  />
-                </div>
-
-                {/* Giờ hoạt động */}
-                <div>
-                  <label className="block text-sm sm:text-base mb-2">
-                    Thời gian hoạt động:
-                  </label>
-                  <div className="grid grid-cols-3 gap-3 items-center">
-                    <input
-                      type="time"
-                      value={startTime}
-                      onChange={(e) => setStartTime(e.target.value)}
-                      className="bg-gray-200 dark:bg-gray-700 p-2 rounded-md text-center"
-                    />
-                    <span className="text-center">→</span>
-                    <input
-                      type="time"
-                      value={endTime}
-                      onChange={(e) => setEndTime(e.target.value)}
-                      className="bg-gray-200 dark:bg-gray-700 p-2 rounded-md text-center"
-                    />
-                  </div>
-                </div>
-
-                
-              </div>
-
-              {/* Bật/Tắt */}
-              <button
-                onClick={() => setIsEnabled(!isEnabled)}
-                className={`w-full py-3 px-6 rounded-lg text-lg font-semibold transition-transform transform hover:scale-105 ${
-                  isEnabled
-                    ? "bg-red-600 hover:bg-red-700"
-                    : "bg-green-600 hover:bg-green-700"
-                }`}
-              >
-                {isEnabled ? "Tắt chuông nhắc" : "Bật chuông nhắc"}
-              </button>
-            </div>
-          </div>
-        );
-      }
-
-      const root = ReactDOM.createRoot(document.getElementById("root"));
-      root.render(<App />);
-    </script>
-  </body>
+</body>
 </html>
