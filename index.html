@@ -20,8 +20,8 @@
   input[type="range"], input[type="time"] { width:100%; }
   .button-toggle { padding:10px 20px; border:none; border-radius:8px; font-size:1rem; cursor:pointer; color:white; transition: transform 0.2s; }
   .button-toggle:hover { transform: scale(1.05); }
-  .button-on { background-color:#e53e3e; }
-  .button-off { background-color:#38a169; }
+  .button-on { background-color:#38a169; } /* xanh = bật */
+  .button-off { background-color:#e53e3e; } /* đỏ = tắt */
 </style>
 </head>
 <body>
@@ -49,7 +49,7 @@
       <input type="time" id="endTime" value="16:30">
     </div>
 
-    <button id="toggleBell" class="button-toggle button-on">Tắt chuông nhắc</button>
+    <button id="toggleBell" class="button-toggle button-on">Chuông Bật</button>
   </div>
 </div>
 
@@ -61,10 +61,11 @@
   const IMAGE_LIGHT = "https://picsum.photos/1200/600?blur=1";
   const IMAGE_DARK = "https://picsum.photos/1200/600?blur=1&grayscale=true";
 
-  let isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+  let isDark = localStorage.getItem('theme') === 'dark' || (window.matchMedia("(prefers-color-scheme: dark)").matches && !localStorage.getItem('theme'));
   function applyTheme(theme){
     if(theme==='dark'){ body.classList.add('dark'); mainImage.src=IMAGE_DARK; }
     else { body.classList.remove('dark'); mainImage.src=IMAGE_LIGHT; }
+    localStorage.setItem('theme', theme);
   }
   applyTheme(isDark?'dark':'light');
 
@@ -76,39 +77,65 @@
 
   // --- Bell Sound ---
   const BELL_URL = "https://soundbible.com/mp3/Temple%20Bell-SoundBible.com-756181215.mp3";
-  const audio = new Audio(BELL_URL); audio.preload="auto"; let isSoundReady=true;
+  const audio = new Audio(BELL_URL); 
+  audio.preload="auto"; 
+  audio.volume = localStorage.getItem('volume') ? localStorage.getItem('volume')/100 : 0.8;
 
   mainImage.onclick = () => {
-    if(isSoundReady){ isSoundReady=false; audio.currentTime=0;
-      audio.play().catch(e=>console.warn(e)).finally(()=>isSoundReady=true);
+    if(audio.paused){
+      audio.currentTime = 0;
+      audio.play().catch(e=>console.warn(e));
     }
   };
 
   // --- Controls ---
   const volumeRange = document.getElementById('volumeRange');
   const volumeLabel = document.getElementById('volumeLabel');
+  volumeRange.value = localStorage.getItem('volume') || 80;
+  volumeLabel.textContent = volumeRange.value + '%';
+  audio.volume = volumeRange.value/100;
+
   volumeRange.addEventListener('input', e=>{
-    const vol = e.target.value; audio.volume=vol/100; volumeLabel.textContent=vol+'%';
+    const vol = e.target.value;
+    audio.volume = vol/100;
+    volumeLabel.textContent = vol + '%';
+    localStorage.setItem('volume', vol);
   });
 
   const intervalRange = document.getElementById('intervalRange');
   const intervalLabel = document.getElementById('intervalLabel');
+  intervalRange.value = localStorage.getItem('interval') || 30;
+  intervalLabel.textContent = intervalRange.value + ' phút';
   let intervalMinutes = parseInt(intervalRange.value); 
+
   intervalRange.addEventListener('input', e=>{
-    intervalMinutes=parseInt(e.target.value); intervalLabel.textContent=intervalMinutes+' phút'; resetTimer();
+    intervalMinutes = parseInt(e.target.value); 
+    intervalLabel.textContent = intervalMinutes + ' phút'; 
+    localStorage.setItem('interval', intervalMinutes);
+    resetTimer();
   });
 
   const startTimeInput = document.getElementById('startTime');
   const endTimeInput = document.getElementById('endTime');
+  startTimeInput.value = localStorage.getItem('startTime') || "07:30";
+  endTimeInput.value = localStorage.getItem('endTime') || "16:30";
 
-  let isEnabled=true;
+  startTimeInput.addEventListener('input', e=>{ localStorage.setItem('startTime', e.target.value); resetTimer(); });
+  endTimeInput.addEventListener('input', e=>{ localStorage.setItem('endTime', e.target.value); resetTimer(); });
+
+  let isEnabled = localStorage.getItem('bellEnabled') !== 'false'; // default true
   const toggleBell = document.getElementById('toggleBell');
+  function updateToggleButton(){
+    toggleBell.textContent = isEnabled ? "Chuông Bật" : "Chuông Tắt";
+    toggleBell.className = `button-toggle ${isEnabled?'button-on':'button-off'}`;
+    localStorage.setItem('bellEnabled', isEnabled);
+  }
   toggleBell.onclick = ()=>{
     isEnabled = !isEnabled;
-    toggleBell.textContent = isEnabled?"Tắt chuông nhắc":"Bật chuông nhắc";
-    toggleBell.className=`button-toggle ${isEnabled?'button-on':'button-off'}`;
+    updateToggleButton();
     resetTimer();
   };
+  updateToggleButton();
 
   let timer;
   function parseTime(str){
@@ -120,15 +147,22 @@
 
   function checkAndPlay(){
     if(!isEnabled) return;
-    const now=new Date();
-    const start=parseTime(startTimeInput.value);
-    const end=parseTime(endTimeInput.value);
-    if(now>=start && now<=end){ mainImage.click(); }
+    const now = new Date();
+    let start = parseTime(startTimeInput.value);
+    let end = parseTime(endTimeInput.value);
+
+    // Nếu end < start → kết thúc ngày hôm sau
+    if(end < start) end.setDate(end.getDate() + 1);
+
+    if(now >= start && now <= end) mainImage.click();
   }
 
   function resetTimer(){
     if(timer) clearInterval(timer);
-    if(isEnabled){ checkAndPlay(); timer=setInterval(checkAndPlay, intervalMinutes*60*1000); }
+    if(isEnabled){ 
+      checkAndPlay(); 
+      timer = setInterval(checkAndPlay, intervalMinutes * 60 * 1000); 
+    }
   }
 
   resetTimer();
@@ -136,4 +170,3 @@
 
 </body>
 </html>
-
