@@ -22,6 +22,20 @@
   .button-toggle:hover { transform: scale(1.05); }
   .button-on { background-color:#38a169; } /* xanh = bật */
   .button-off { background-color:#e53e3e; } /* đỏ = tắt */
+
+  /* CSS Progress Bar Animation */
+  @keyframes shrinkWidth {
+    from { width: 100%; }
+    to { width: 0%; }
+  }
+  .progress-bar {
+    position:absolute;
+    top:0; left:0;
+    height:5px;
+    background:#38a169;
+    width:100%;
+    z-index:10;
+  }
 </style>
 </head>
 <body>
@@ -32,6 +46,7 @@
   <h1>Relaxation Bell</h1>
 
   <div id="imageContainer" class="image-container">
+    <div id="progressBar" class="progress-bar"></div>
     <img id="mainImage" src="https://picsum.photos/1200/600?blur=1" alt="Relaxation">
   </div>
 
@@ -137,7 +152,14 @@
   };
   updateToggleButton();
 
-  let timer;
+  // --- Progress Bar Animation ---
+  const progressBar = document.getElementById('progressBar');
+  function startProgressBar(durationMinutes){
+    progressBar.style.animation = 'none'; // reset
+    void progressBar.offsetWidth; // force reflow
+    progressBar.style.animation = `shrinkWidth ${durationMinutes*60}s linear forwards`;
+  }
+
   function parseTime(str){
     const [h,m] = str.split(':').map(Number);
     const d = new Date();
@@ -151,17 +173,24 @@
     let start = parseTime(startTimeInput.value);
     let end = parseTime(endTimeInput.value);
 
-    // Nếu end < start → kết thúc ngày hôm sau
     if(end < start) end.setDate(end.getDate() + 1);
 
-    if(now >= start && now <= end) mainImage.click();
+    if(now >= start && now <= end){
+      mainImage.click();
+      startProgressBar(intervalMinutes);
+    }
   }
 
+  let timer;
   function resetTimer(){
     if(timer) clearInterval(timer);
     if(isEnabled){ 
       checkAndPlay(); 
+      startProgressBar(intervalMinutes); 
       timer = setInterval(checkAndPlay, intervalMinutes * 60 * 1000); 
+    } else {
+      progressBar.style.animation = 'none';
+      progressBar.style.width = '0%';
     }
   }
 
