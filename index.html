@@ -74,7 +74,7 @@
   const body = document.body;
   const mainImage = document.getElementById('mainImage');
   const IMAGE_LIGHT = "https://picsum.photos/1200/600?blur=1";
-  const IMAGE_DARK = "https://picsum.photos/1200/600?blur=1&grayscale=true";
+  const IMAGE_DARK = "https://picsum.photos/1200/600?blur=1";
 
   let isDark = localStorage.getItem('theme') === 'dark' || (window.matchMedia("(prefers-color-scheme: dark)").matches && !localStorage.getItem('theme'));
   function applyTheme(theme){
@@ -199,3 +199,4 @@
 
 </body>
 </html>
+
