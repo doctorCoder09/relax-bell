@@ -90,17 +90,24 @@
     themeButton.textContent = isDark ? "🌞" : "🌙";
   };
 
-  // --- Bell Sound ---
-  const BELL_URL = "https://soundbible.com/mp3/Temple%20Bell-SoundBible.com-756181215.mp3";
-  const audio = new Audio(BELL_URL); 
-  audio.preload="auto"; 
-  audio.volume = localStorage.getItem('volume') ? localStorage.getItem('volume')/100 : 0.8;
+  // --- Bell Sounds Random ---
+  const BELL_SOUNDS = [
+    "https://soundbible.com/mp3/Temple%20Bell-SoundBible.com-756181215.mp3",
+    "https://soundbible.com/mp3/Japanese%20Temple%20Bell%20Small-SoundBible.com-113624364.mp3",
+    "https://soundbible.com/mp3/Zen%20Buddhist%20Temple%20Bell-SoundBible.com-331362457.mp3",
+    "https://soundbible.com/mp3/Zen%20Temple%20Bell-SoundBible.com-2070036999.mp3" 
+  ];
+
+  function playRandomBell() {
+    const randomIndex = Math.floor(Math.random() * BELL_SOUNDS.length);
+    const audio = new Audio(BELL_SOUNDS[randomIndex]);
+    audio.volume = volumeRange.value / 100;
+    audio.play().catch(e => console.warn(e));
+  }
 
   mainImage.onclick = () => {
-    if(audio.paused){
-      audio.currentTime = 0;
-      audio.play().catch(e=>console.warn(e));
-    }
+    if(isEnabled) playRandomBell();
+    startProgressBar(intervalMinutes);
   };
 
   // --- Controls ---
@@ -108,11 +115,9 @@
   const volumeLabel = document.getElementById('volumeLabel');
   volumeRange.value = localStorage.getItem('volume') || 80;
   volumeLabel.textContent = volumeRange.value + '%';
-  audio.volume = volumeRange.value/100;
 
   volumeRange.addEventListener('input', e=>{
     const vol = e.target.value;
-    audio.volume = vol/100;
     volumeLabel.textContent = vol + '%';
     localStorage.setItem('volume', vol);
   });
@@ -121,11 +126,11 @@
   const intervalLabel = document.getElementById('intervalLabel');
   intervalRange.value = localStorage.getItem('interval') || 30;
   intervalLabel.textContent = intervalRange.value + ' phút';
-  let intervalMinutes = parseInt(intervalRange.value); 
+  let intervalMinutes = parseInt(intervalRange.value);
 
   intervalRange.addEventListener('input', e=>{
-    intervalMinutes = parseInt(e.target.value); 
-    intervalLabel.textContent = intervalMinutes + ' phút'; 
+    intervalMinutes = parseInt(e.target.value);
+    intervalLabel.textContent = intervalMinutes + ' phút';
     localStorage.setItem('interval', intervalMinutes);
     resetTimer();
   });
@@ -138,7 +143,7 @@
   startTimeInput.addEventListener('input', e=>{ localStorage.setItem('startTime', e.target.value); resetTimer(); });
   endTimeInput.addEventListener('input', e=>{ localStorage.setItem('endTime', e.target.value); resetTimer(); });
 
-  let isEnabled = localStorage.getItem('bellEnabled') !== 'false'; // default true
+  let isEnabled = localStorage.getItem('bellEnabled') !== 'false';
   const toggleBell = document.getElementById('toggleBell');
   function updateToggleButton(){
     toggleBell.textContent = isEnabled ? "Chuông Bật" : "Chuông Tắt";
@@ -152,11 +157,11 @@
   };
   updateToggleButton();
 
-  // --- Progress Bar Animation ---
+  // --- Progress Bar ---
   const progressBar = document.getElementById('progressBar');
   function startProgressBar(durationMinutes){
-    progressBar.style.animation = 'none'; // reset
-    void progressBar.offsetWidth; // force reflow
+    progressBar.style.animation = 'none';
+    void progressBar.offsetWidth; 
     progressBar.style.animation = `shrinkWidth ${durationMinutes*60}s linear forwards`;
   }
 
@@ -176,7 +181,7 @@
     if(end < start) end.setDate(end.getDate() + 1);
 
     if(now >= start && now <= end){
-      mainImage.click();
+      playRandomBell();
       startProgressBar(intervalMinutes);
     }
   }
