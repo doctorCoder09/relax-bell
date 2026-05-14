@@ -91,7 +91,7 @@
   };
 
   // --- Bell Sound ---
-  const BELL_URL = "https://soundbible.com/mp3/Temple%20Bell-SoundBible.com-756181215.mp3";
+  const BELL_URL = "assets/bell.mp3";
   const audio = new Audio(BELL_URL); 
   audio.preload="auto"; 
   audio.volume = localStorage.getItem('volume') ? localStorage.getItem('volume')/100 : 0.8;
